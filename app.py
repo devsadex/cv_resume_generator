@@ -6,14 +6,37 @@ MODEL_NAME = "Qwen/Qwen2-7B-Instruct"
 
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, trust_remote_code=True)
 
+model = AutoModelForCausalLM.from_pretrained(
+        MODEL_NAME,
+        torch_dtype=torch.bfloat16 if torch.cuda.is_available() else torch.float32,
+        device_map="auto",
+        low_cpu_mem_usage=True,
+        trust_remote_code=True,
+    )
+
+
 def gen_doc(doc_type, name, email, phone, location, summary, skills, experience, education, target_role, company, interest):
     user_prompt = gen_user_prompt(doc_type, name, email, phone, location, summary, skills, experience, education, target_role, company, interest)
     messages=[
         {"role": "system", "content": "You are a helpful assistant that assist in writing professional and excellent resume and CV"},
         {"role" : "user", "content": user_prompt}
     ]
-    prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    return prompt
+    #prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    inputs = tokenizer(messages, return_tensors="pt").to(model.device)
+    output = model.generate(
+        **inputs,
+        max_new_tokens=500,
+        temperature=0.7,
+        do_sample=True,
+        top_p=0.9,
+        eos_token_id=tokenizer.eos_token_id,
+        pad_token_id=tokenizer.eos_token_id,
+    )
+    generated = tokenizer.decode(output[0], skip_special_tokens=True)
+    # Optionally, strip the prompt prefix from output
+    # (if model tends to repeat)
+    # You can post‑process as needed.
+    return generated
 
 def gen_user_prompt( doc_type, name, email, phone, location, summary, skills, experience, education, target_role, company, interest):
     if doc_type =="Resume":
