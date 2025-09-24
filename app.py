@@ -1,19 +1,17 @@
 import torch
-from transformers import  AutoTokenizer, AutoModelForCausalLM
+from transformers import  AutoTokenizer, AutoModelForCausalLM, TextStreamer, BitsAndBytesConfig
 import gradio as gr
 from accelerate import Accelerator
 
-MODEL_NAME = "Qwen/Qwen2-7B-Instruct" 
+MODEL = "Qwen/Qwen2-7B-Instruct" 
+quant_config = BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_use_double_quant=True,
+    bnb_4bit_compute_dtype=torch.bfloat16,
+    bnb_4bit_quant_type="nf4"
+)
 
-tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, trust_remote_code=True)
 
-model = AutoModelForCausalLM.from_pretrained(
-        MODEL_NAME,
-        dtype=torch.bfloat16 if torch.cuda.is_available() else torch.float32,
-        device_map="auto",
-        low_cpu_mem_usage=True,
-        trust_remote_code=True,
-    )
 
 
 def gen_doc(doc_type, name, email, phone, location, summary, skills, experience, education, target_role, company, interest):
@@ -23,21 +21,14 @@ def gen_doc(doc_type, name, email, phone, location, summary, skills, experience,
         {"role" : "user", "content": user_prompt}
     ]
     #prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    inputs = tokenizer(messages, return_tensors="pt").to(model.device)
-    output = model.generate(
-        **inputs,
-        max_new_tokens=500,
-        temperature=0.7,
-        do_sample=True,
-        top_p=0.9,
-        eos_token_id=tokenizer.eos_token_id,
-        pad_token_id=tokenizer.eos_token_id,
-    )
-    generated = tokenizer.decode(output[0], skip_special_tokens=True)
-    # Optionally, strip the prompt prefix from output
-    # (if model tends to repeat)
-    # You can post‑process as needed.
-    return generated
+    tokenizer = AutoTokenizer.from_pretrained(MODEL)
+    tokenizer.pad_token = tokenizer.eos_token
+    inputs = tokenizer.apply_chat_template(messages, add_generation_prompt=True, return_tensors="pt")
+    streamer = TextStreamer(tokenizer)
+    model = AutoModelForCausalLM.from_pretrained(MODEL, device_map="auto", quantization_config=quant_config)
+    outputs = model.generate(inputs, max_new_tokens=2000, streamer=streamer)
+    response = tokenizer.decode(outputs[0])
+    return response
 
 def gen_user_prompt( doc_type, name, email, phone, location, summary, skills, experience, education, target_role, company, interest):
     if doc_type =="Resume":
