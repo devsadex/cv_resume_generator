@@ -1,6 +1,7 @@
 import torch
 from transformers import  AutoTokenizer, AutoModelForCausalLM
 import gradio as gr
+from accelerate import Accelerator
 
 MODEL_NAME = "Qwen/Qwen2-7B-Instruct" 
 
@@ -8,7 +9,7 @@ tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, trust_remote_code=True)
 
 model = AutoModelForCausalLM.from_pretrained(
         MODEL_NAME,
-        torch_dtype=torch.bfloat16 if torch.cuda.is_available() else torch.float32,
+        dtype=torch.bfloat16 if torch.cuda.is_available() else torch.float32,
         device_map="auto",
         low_cpu_mem_usage=True,
         trust_remote_code=True,
