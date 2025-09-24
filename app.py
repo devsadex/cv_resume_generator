@@ -2,7 +2,7 @@ import torch
 from transformers import  AutoTokenizer, AutoModelForCausalLM
 import gradio as gr
 
-MODEL_NAME = "meta-llama/Llama-2-7b-chat-hf" 
+MODEL_NAME = "Qwen/Qwen2-7B-Instruct" 
 
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, trust_remote_code=True)
 
