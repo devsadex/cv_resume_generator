@@ -10,6 +10,10 @@ quant_config = BitsAndBytesConfig(
     bnb_4bit_compute_dtype=torch.bfloat16,
     bnb_4bit_quant_type="nf4"
 )
+tokenizer = AutoTokenizer.from_pretrained(MODEL)
+tokenizer.pad_token = tokenizer.eos_token
+model = AutoModelForCausalLM.from_pretrained(MODEL, device_map="auto", quantization_config=quant_config)
+   
 
 
 
@@ -21,11 +25,9 @@ def gen_doc(doc_type, name, email, phone, location, summary, skills, experience,
         {"role" : "user", "content": user_prompt}
     ]
     #prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    tokenizer = AutoTokenizer.from_pretrained(MODEL)
-    tokenizer.pad_token = tokenizer.eos_token
+   
     inputs = tokenizer.apply_chat_template(messages, add_generation_prompt=True, return_tensors="pt")
     streamer = TextStreamer(tokenizer)
-    model = AutoModelForCausalLM.from_pretrained(MODEL, device_map="auto", quantization_config=quant_config)
     outputs = model.generate(inputs, max_new_tokens=2000, streamer=streamer)
     response = tokenizer.decode(outputs[0])
     return response
