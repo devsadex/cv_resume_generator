@@ -4,3 +4,5 @@ torchaudio
 transformers
 datasets
 accelerate
+bitsandbytes
+requests
